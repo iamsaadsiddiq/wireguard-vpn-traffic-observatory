@@ -1,0 +1,7 @@
+# Preserve script line endings on Windows and Linux.
+*.sh text eol=lf
+*.yml text eol=lf
+*.md text eol=lf
+*.js text eol=lf
+*.html text eol=lf
+*.cmd text eol=crlf

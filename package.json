@@ -1,0 +1,14 @@
+{
+  "name": "wireguard-vpn-traffic-observatory",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Educational WireGuard VPN lab with a consent-based traffic metadata dashboard",
+  "scripts": {
+    "start": "node dashboard/server.js",
+    "test": "node --test"
+  },
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  }
+}

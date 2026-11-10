@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>VPN Lab — Live Traffic Dashboard</title>
+<style>
+:root { font-family: Inter, system-ui, -apple-system, Segoe UI, sans-serif; background:#08111e; color:#e8f0fc; }
+* { box-sizing: border-box; }
+body { margin:0; min-height:100vh; background: radial-gradient(ellipse at 15% -15%,#163556 0,transparent 52%),#08111e; }
+main { max-width:1180px; margin:0 auto; padding:44px 22px 70px; }
+header { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; flex-wrap:wrap; }
+.brand { font-size:12px; font-weight:750; letter-spacing:.15em; text-transform:uppercase; color:#55dfb8; }
+h1 { margin:8px 0 6px; font-size:clamp(29px,5vw,45px); line-height:1.1; letter-spacing:-.035em; }
+p { color:#a5b6ce; font-size:14px; line-height:1.55; }
+.status { display:flex; gap:8px; align-items:center; font-size:12px; color:#a5b6ce; border:1px solid #27405a; border-radius:30px; padding:9px 13px; }
+.dot { width:8px; height:8px; border-radius:50%; background:#4cddab; box-shadow:0 0 13px #4cddab; }
+.cards { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:14px; margin:30px 0 26px; }
+.card,.panel { border:1px solid #233850; background:#101e30dd; border-radius:16px; }
+.card { padding:19px; }
+.card .label { text-transform:uppercase; font-size:10px; letter-spacing:.08em; color:#97adc5; }
+.card .value { font-size:34px; font-weight:750; margin-top:11px; font-variant-numeric:tabular-nums; letter-spacing:-.03em; }
+.panel { padding:20px; margin-bottom:16px; }
+.panel h2 { font-size:16px; margin:0 0 8px; }
+.sub { font-size:12px; color:#90a5bf; margin:0 0 14px; }
+table { width:100%; border-collapse:collapse; font-size:12px; }
+th { text-align:left; padding:12px 9px; color:#8ea6c3; font-size:11px; font-weight:600; border-bottom:1px solid #294059; }
+td { padding:11px 9px; border-bottom:1px solid #1e3147; color:#d8e6f5; }
+tr:last-child td { border-bottom:none; }
+code { color:#b6e6f9; font-size:12px; }
+.pill { border-radius:20px; border:1px solid #356a77; background:#10313e; color:#7cf2d1; padding:4px 7px; white-space:nowrap; }
+.tablewrap { overflow-x:auto; }
+.empty { color:#7e94b1; padding:26px 8px; font-size:13px; text-align:center; }
+footer { color:#8da3bc; font-size:12px; padding-top:10px; line-height:1.55; }
+@media(max-width:800px) { .cards{grid-template-columns:repeat(2,minmax(0,1fr))} }
+@media(max-width:460px) { .cards{grid-template-columns:1fr 1fr;gap:8px}.card{padding:14px}.card .value{font-size:26px}.panel{padding:13px} }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div><div class="brand">30 days · 30 projects / Network lab</div><h1>VPN Traffic Observatory</h1><p>Live, consent-based connection metadata from your WireGuard tunnel.</p></div>
+    <div class="status"><span class="dot" id="dot"></span><span id="status">Connecting to monitor...</span></div>
+  </header>
+  <section class="cards" aria-label="Network summary">
+    <div class="card"><div class="label">Active source IPs (60 sec)</div><div class="value" id="active">0</div></div>
+    <div class="card"><div class="label">Source IPs observed</div><div class="value" id="sources">0</div></div>
+    <div class="card"><div class="label">Unique destination IPs</div><div class="value" id="destinations">0</div></div>
+    <div class="card"><div class="label">Packets observed</div><div class="value" id="packets">0</div></div>
+  </section>
+  <section class="panel"><h2>Active VPN client addresses</h2><p class="sub">Devices that sent traffic in the past 60 seconds — not WireGuard authentication status.</p><div id="peers" class="empty">No recent client traffic.</div></section>
+  <section class="panel"><h2>Recent destination flows</h2><p class="sub">Source and destination IP/port pairs, deduplicated for five minutes. Not full website URLs.</p>
+    <div class="tablewrap"><table><thead><tr><th>Time</th><th>Client (VPN IP)</th><th>Destination</th><th>Protocol</th><th>Likely service</th></tr></thead><tbody id="rows"><tr><td colspan="5" class="empty">Waiting for traffic from a VPN client...</td></tr></tbody></table></div>
+  </section>
+  <footer>Privacy by design: this monitor stores only recent metadata in memory, binds to 127.0.0.1, and does not inspect packet payloads or decrypt HTTPS. Domain information requires separate DNS logging and may not be available for encrypted DNS.</footer>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+const eventStream = new EventSource('/events');
+const fmt = time => time ? new Date(time).toLocaleTimeString() : '—';
+eventStream.onopen = () => { $('status').textContent = 'Live monitor connected'; $('dot').style.background = '#4cddab'; };
+eventStream.onerror = () => { $('status').textContent = 'Monitor disconnected; reconnecting'; $('dot').style.background = '#f4ad55'; };
+eventStream.onmessage = event => {
+  const data = JSON.parse(event.data);
+  $('active').textContent = data.activeSourceCount.toLocaleString();
+  $('sources').textContent = data.sourceCount.toLocaleString();
+  $('destinations').textContent = data.destinationCount.toLocaleString();
+  $('packets').textContent = data.packetsObserved.toLocaleString();
+  const peers = $('peers'); peers.replaceChildren();
+  if (!data.activeSources.length) {
+    peers.className = 'empty'; peers.textContent = 'No recent client traffic.';
+  } else {
+    peers.className = '';
+    data.activeSources.forEach(ip => {
+      const el = document.createElement('span');
+      el.className='pill'; el.style.display='inline-block'; el.style.margin='5px';
+      el.textContent=ip; peers.appendChild(el);
+    });
+  }
+  const rows = $('rows'); rows.replaceChildren();
+  if (!data.recent.length) {
+    const tr=document.createElement('tr'); const td=document.createElement('td');
+    td.colSpan=5; td.className='empty'; td.textContent='Waiting for traffic from a VPN client...';
+    tr.appendChild(td); rows.appendChild(tr); return;
+  }
+  data.recent.slice(0,60).forEach(item => {
+    const tr=document.createElement('tr');
+    [fmt(item.at), item.sourceIp, `${item.destinationIp}:${item.destinationPort}`,item.protocol,item.service].forEach((value,i)=>{
+      const td=document.createElement('td');
+      if(i===1 || i===2) { const code=document.createElement('code'); code.textContent=value; td.appendChild(code); }
+      else td.textContent=value;
+      tr.appendChild(td);
+    });
+    rows.appendChild(tr);
+  });
+};
+</script>
+</body>
+</html>

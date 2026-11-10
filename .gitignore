@@ -1,0 +1,27 @@
+# Never publish VPN secrets or real traffic captures
+*.key
+*.pem
+*.p12
+*.pfx
+*.pcap
+*.pcapng
+*.log
+wg0.conf
+clients/
+wireguard-private/
+*.env
+.env.*
+!.env.example
+*.conf
+
+# JavaScript tooling
+node_modules/
+coverage/
+.nyc_output/
+npm-debug.log*
+
+# OS/editor temp files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
