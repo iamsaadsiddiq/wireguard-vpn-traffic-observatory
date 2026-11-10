@@ -206,7 +206,3 @@ sudo iptables -t nat -S POSTROUTING
 - [WireGuard quick start](https://www.wireguard.com/quickstart/)
 - [WireGuard install guide](https://www.wireguard.com/install/)
 - [Ubuntu WireGuard default gateway](https://ubuntu.com/server/docs/wireguard-vpn-defaultgw/)
-
----
-
-**30 Days, 30 Projects · Networking / Cybersecurity / Node.js · MIT License**
